@@ -20,6 +20,7 @@ import {
   cancelNotificationsByIds,
   cancelAllAppNotifications,
 } from '../services/notifications/notificationService';
+import { playWaterSound, playDingSound } from '../services/sound/soundService';
 
 const getLocalDateString = (date?: Date): string => {
   const d = date || new Date();
@@ -363,6 +364,7 @@ export const useWellnessStore = create<WellnessState>()(
             };
           });
 
+          playWaterSound();
           return entryId;
         },
 
@@ -676,6 +678,8 @@ export const useWellnessStore = create<WellnessState>()(
         // Habit Completion Toggle Actions
         toggleHabitCompletion: (habitId, dateStr) => {
           const targetDate = dateStr || getLocalDateString();
+          let becameCompleted = false;
+
           set((state) => {
             const existingIndex = state.habitCompletions.findIndex(
               (c) => c.habitId === habitId && c.dateKey === targetDate
@@ -693,10 +697,15 @@ export const useWellnessStore = create<WellnessState>()(
                 completedAt: new Date().toISOString(),
               };
               newCompletions.push(newCompletion);
+              becameCompleted = true;
             }
 
             return { habitCompletions: newCompletions };
           });
+
+          if (becameCompleted) {
+            playDingSound();
+          }
         },
 
         // Reset Data
