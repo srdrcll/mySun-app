@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>mySun - Kişisel Sağlıklı Yaşam Takibi</title>
+  <meta name="description" content="Günlük su, uyku, ruh hali ve alışkanlıklarınızı takip eden sıcak ve sade kişisel wellness asistanınız.">
+  
+  <!-- PWA Support -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Top Notification Toast -->
+  <div id="notification-container" class="notification-container"></div>
+
+  <!-- Mobile Frame Wrapper for Desktop & Responsive Mobile Layout -->
+  <div class="phone-frame">
+    <div class="phone-screen">
+      
+      <!-- Top Header / Bar -->
+      <header class="app-header">
+        <div class="header-logo">
+          <svg class="logo-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+          </svg>
+          <span class="logo-text">mySun</span>
+        </div>
+        <div class="header-right">
+          <span id="header-date">16 Temmuz</span>
+          <button id="theme-toggle-btn" class="icon-btn" aria-label="Temayı Değiştir">
+            <!-- Moon Icon (Light theme default, shows moon to toggle dark) -->
+            <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+            <!-- Sun Icon (hidden by default) -->
+            <svg class="icon-sun hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main App Content Scroll Container -->
+      <main class="app-content">
+
+        <!-- 1. TAB: HOME (ANA SAYFA) -->
+        <section id="tab-home" class="tab-panel active">
+          
+          <!-- Motivation Greeting Card -->
+          <div class="card motivation-card">
+            <div class="motivation-layout">
+              <div class="motivation-content">
+                <h2 id="greeting-text">Merhaba!</h2>
+                <p id="motivational-message">Bugün kendin için güzel bir şey yapmaya ne dersin?</p>
+              </div>
+              <div class="motivation-illustration">
+                <div class="sun-glow-effect"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Daily Overview (Summary Rings) -->
+          <div class="section-title">Bugünkü Özet</div>
+          <div class="card summary-card">
+            <div class="summary-details">
+              <div class="summary-ring-container">
+                <svg class="progress-ring" width="100" height="100">
+                  <circle class="progress-ring__circle-bg" stroke-width="8" fill="transparent" r="40" cx="50" cy="50"/>
+                  <circle id="summary-progress-bar" class="progress-ring__circle" stroke-width="8" fill="transparent" r="40" cx="50" cy="50"/>
+                </svg>
+                <div class="summary-ring-percentage" id="summary-percentage">0%</div>
+              </div>
+              <div class="summary-stats">
+                <div class="summary-stat-item">
+                  <span class="dot peach"></span>
+                  <span id="sum-water-text">Su: 0 / 2000 ml</span>
+                </div>
+                <div class="summary-stat-item">
+                  <span class="dot mint"></span>
+                  <span id="sum-habits-text">Alışkanlıklar: 0/3</span>
+                </div>
+                <div class="summary-stat-item">
+                  <span class="dot lavender"></span>
+                  <span id="sum-sleep-text">Uyku: 0 / 8 saat</span>
+                </div>
+                <div class="summary-stat-item">
+                  <span class="dot blue"></span>
+                  <span id="sum-mood-text">Ruh Hali: Seçilmedi</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions Grid -->
+          <div class="section-title">Hızlı Takip</div>
+          <div class="quick-grid">
+            
+            <!-- Water Intake Card -->
+            <div class="card tracking-card water-card">
+              <div class="card-header-icon">
+                <svg class="tint-blue" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                </svg>
+                <h3>Su Takibi</h3>
+              </div>
+              <div class="water-progress-visual">
+                <div class="water-glass">
+                  <div id="water-wave" class="water-wave-fill" style="height: 0%;"></div>
+                </div>
+                <div class="water-stats-value">
+                  <span id="water-current">0</span> <span class="unit">/ <span id="water-target-display">2000</span> ml</span>
+                </div>
+              </div>
+              <div class="quick-actions-row">
+                <button class="btn btn-sm btn-water" onclick="addWater(250)">
+                  <span>+250 ml</span>
+                </button>
+                <button class="btn btn-sm btn-water" onclick="addWater(500)">
+                  <span>+500 ml</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Sleep Tracker Card -->
+            <div class="card tracking-card sleep-card">
+              <div class="card-header-icon">
+                <svg class="tint-lavender" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <h3>Uyku Süresi</h3>
+              </div>
+              <div class="sleep-input-wrapper">
+                <div class="sleep-hours-display">
+                  <span id="sleep-hours-val">7.0</span> <span class="unit">saat</span>
+                </div>
+                <input type="range" id="sleep-range" min="0" max="15" step="0.5" value="7" class="slider sleep-slider">
+                <div class="sleep-quality-selector">
+                  <button class="quality-btn" data-quality="3" title="İyi">😊 İyi</button>
+                  <button class="quality-btn active" data-quality="2" title="Orta">😐 Orta</button>
+                  <button class="quality-btn" data-quality="1" title="Kötü">😴 Kötü</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mood Tracker Card (Full width for comfortable touch areas) -->
+            <div class="card tracking-card mood-card span-2">
+              <div class="card-header-icon">
+                <svg class="tint-peach" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                  <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                  <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                </svg>
+                <h3>Şu Anki Ruh Halin</h3>
+              </div>
+              <div class="mood-selector-container">
+                <button class="mood-btn" data-mood="5" aria-label="Harika">
+                  <span class="mood-emoji">😁</span>
+                  <span class="mood-label">Harika</span>
+                </button>
+                <button class="mood-btn" data-mood="4" aria-label="İyi">
+                  <span class="mood-emoji">🙂</span>
+                  <span class="mood-label">İyi</span>
+                </button>
+                <button class="mood-btn" data-mood="3" aria-label="Nötr">
+                  <span class="mood-emoji">😐</span>
+                  <span class="mood-label">Nötr</span>
+                </button>
+                <button class="mood-btn" data-mood="2" aria-label="Halsiz">
+                  <span class="mood-emoji">😔</span>
+                  <span class="mood-label">Halsiz</span>
+                </button>
+                <button class="mood-btn" data-mood="1" aria-label="Kötü">
+                  <span class="mood-emoji">😢</span>
+                  <span class="mood-label">Kötü</span>
+                </button>
+              </div>
+              <div class="mood-note-container">
+                <input type="text" id="mood-note-input" class="text-input" placeholder="Ruh halinle ilgili ufak bir not ekle...">
+              </div>
+            </div>
+
+            <!-- Habit Tracker Card (Full width) -->
+            <div class="card tracking-card habits-card span-2">
+              <div class="card-header-icon">
+                <svg class="tint-mint" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 11 12 14 22 4"></polyline>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                </svg>
+                <h3>Günlük Alışkanlıklar</h3>
+              </div>
+              <div class="habits-list" id="daily-habits-list">
+                <!-- Loaded dynamically from JS -->
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- 2. TAB: CALENDAR (TAKVİM) -->
+        <section id="tab-calendar" class="tab-panel">
+          <div class="card calendar-card">
+            <div class="calendar-header">
+              <button id="prev-month-btn" class="icon-btn">&lt;</button>
+              <h2 id="calendar-month-year">Temmuz 2026</h2>
+              <button id="next-month-btn" class="icon-btn">&gt;</button>
+            </div>
+            <div class="calendar-weekdays">
+              <div>Pzt</div><div>Sal</div><div>Çar</div><div>Per</div><div>Cum</div><div>Cmt</div><div>Paz</div>
+            </div>
+            <div class="calendar-grid" id="calendar-days">
+              <!-- Loaded dynamically from JS -->
+            </div>
+          </div>
+
+          <div class="card calendar-legend-card">
+            <h3>Renk Açıklamaları</h3>
+            <div class="legend-items">
+              <div class="legend-item"><span class="legend-color level-0"></span><span>Kayıt Yok / %0</span></div>
+              <div class="legend-item"><span class="legend-color level-1"></span><span>%1 - %40 Tamamlandı</span></div>
+              <div class="legend-item"><span class="legend-color level-2"></span><span>%41 - %80 Tamamlandı</span></div>
+              <div class="legend-item"><span class="legend-color level-3"></span><span>%81 - %100 Başarı</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. TAB: STATS (İSTATİSTİKLER) -->
+        <section id="tab-stats" class="tab-panel">
+          <!-- Quick summary cards -->
+          <div class="stats-overview">
+            <div class="card stat-mini-card">
+              <span class="mini-title">Haftalık Ortalama Su</span>
+              <span class="mini-value" id="stats-avg-water">0 ml</span>
+            </div>
+            <div class="card stat-mini-card">
+              <span class="mini-title">Haftalık Ortalama Uyku</span>
+              <span class="mini-value" id="stats-avg-sleep">0 saat</span>
+            </div>
+          </div>
+
+          <!-- Water Chart Card -->
+          <div class="card chart-card">
+            <div class="chart-header">
+              <h3>Su Tüketim Grafiği (Son 7 Gün)</h3>
+            </div>
+            <div class="svg-chart-container">
+              <!-- Rendered with SVGs from JS -->
+              <svg id="water-bar-chart" width="100%" height="180" viewBox="0 0 350 180"></svg>
+            </div>
+          </div>
+
+          <!-- Sleep Trend Chart Card -->
+          <div class="card chart-card">
+            <div class="chart-header">
+              <h3>Uyku Trendi ve Kalitesi (Son 7 Gün)</h3>
+            </div>
+            <div class="svg-chart-container">
+              <svg id="sleep-line-chart" width="100%" height="180" viewBox="0 0 350 180"></svg>
+            </div>
+          </div>
+
+          <!-- Mood Distribution -->
+          <div class="card chart-card">
+            <div class="chart-header">
+              <h3>Ruh Hali Dağılımı (Son 30 Gün)</h3>
+            </div>
+            <div class="mood-dist-layout">
+              <div class="pie-chart-wrapper">
+                <svg id="mood-pie-chart" width="120" height="120" viewBox="0 0 100 100"></svg>
+              </div>
+              <div class="mood-legend-list" id="mood-dist-legend">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. TAB: PROFILE (PROFİL VE AYARLAR) -->
+        <section id="tab-profile" class="tab-panel">
+          <!-- Profile Card -->
+          <div class="card profile-user-card">
+            <div class="avatar-wrapper">
+              <div class="avatar-circle">🌟</div>
+            </div>
+            <div class="profile-user-info">
+              <h2 id="profile-name-display">Kullanıcı</h2>
+              <p>Sağlıklı Yaşam Yolcusu</p>
+            </div>
+          </div>
+
+          <!-- General Goals -->
+          <div class="section-title">Günlük Hedefler</div>
+          <div class="card profile-settings-card">
+            <div class="setting-row">
+              <label for="set-user-name">Adınız</label>
+              <input type="text" id="set-user-name" class="text-input" value="Kullanıcı">
+            </div>
+            <div class="setting-row">
+              <label for="set-water-target">Su Hedefi (ml)</label>
+              <input type="number" id="set-water-target" class="text-input" value="2000" step="100" min="500">
+            </div>
+            <div class="setting-row">
+              <label for="set-sleep-target">Uyku Hedefi (saat)</label>
+              <input type="number" id="set-sleep-target" class="text-input" value="8" step="0.5" min="4" max="12">
+            </div>
+            <button id="save-goals-btn" class="btn btn-primary">Hedefleri Kaydet</button>
+          </div>
+
+          <!-- Habits Customizer -->
+          <div class="section-title">Alışkanlıklarımı Yönet</div>
+          <div class="card profile-habits-card">
+            <div class="add-habit-form">
+              <input type="text" id="new-habit-input" class="text-input" placeholder="Yeni alışkanlık (örn: Kitap oku)">
+              <button id="add-habit-btn" class="btn btn-primary">+</button>
+            </div>
+            <ul class="manage-habits-list" id="manage-habits-list">
+              <!-- Loaded dynamically -->
+            </ul>
+          </div>
+
+          <!-- System & Reset -->
+          <div class="section-title">Sistem</div>
+          <div class="card profile-system-card">
+            <div class="setting-row toggle-row">
+              <span>Karanlık Tema</span>
+              <label class="switch">
+                <input type="checkbox" id="dark-mode-toggle">
+                <span class="slider-round"></span>
+              </label>
+            </div>
+            <div class="setting-row toggle-row">
+              <span>Hatırlatıcı Bildirimler</span>
+              <label class="switch">
+                <input type="checkbox" id="notifications-toggle" checked>
+                <span class="slider-round"></span>
+              </label>
+            </div>
+            <hr class="divider">
+            <button id="reset-data-btn" class="btn btn-danger btn-outline">Tüm Verileri Sıfırla</button>
+          </div>
+
+          <!-- Disclaimer Text -->
+          <div class="medical-disclaimer">
+            mySun tıbbi tavsiye vermez ve tıbbi teşhis koymaz. Sağlığınızla ilgili ciddi endişeleriniz için lütfen uzman bir hekime danışın.
+          </div>
+        </section>
+
+      </main>
+
+      <!-- Bottom Tab Navigation Bar -->
+      <nav class="app-navbar">
+        <button class="nav-item active" data-tab="home" aria-label="Ana Sayfa">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span class="nav-label">Ana Sayfa</span>
+        </button>
+        <button class="nav-item" data-tab="calendar" aria-label="Takvim">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          <span class="nav-label">Takvim</span>
+        </button>
+        <button class="nav-item" data-tab="stats" aria-label="İstatistikler">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          <span class="nav-label">Analiz</span>
+        </button>
+        <button class="nav-item" data-tab="profile" aria-label="Profil">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span class="nav-label">Profil</span>
+        </button>
+      </nav>
+
+    </div>
+  </div>
+
+  <!-- Day Detail Modal (for Calendar Click) -->
+  <div id="day-modal" class="modal">
+    <div class="modal-overlay" onclick="closeModal()"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-date-title">16 Temmuz 2026</h3>
+        <button onclick="closeModal()" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-day-details">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
