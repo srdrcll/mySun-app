@@ -54,6 +54,49 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigateToStats 
   const [exportData, setExportData] = useState('');
   const [wipeStep, setWipeStep] = useState(0); // 0: none, 1: step 1, 2: step 2
 
+  // Supabase Auth Form States
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+
+  const handleAuthSubmit = async () => {
+    if (!authEmail.trim() || !authPassword.trim()) {
+      Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
+      return;
+    }
+    if (authPassword.length < 6) {
+      Alert.alert('Hata', 'Şifreniz en az 6 karakter olmalıdır.');
+      return;
+    }
+
+    try {
+      if (authMode === 'login') {
+        await store.signIn(authEmail, authPassword);
+      } else {
+        await store.signUp(authEmail, authPassword);
+      }
+      
+      const currentSession = useWellnessStore.getState().session;
+      if (currentSession) {
+        setAuthEmail('');
+        setAuthPassword('');
+        Alert.alert('Başarılı', authMode === 'login' ? 'Giriş yapıldı ve veriler eşitlendi!' : 'Kayıt oluşturuldu ve yedeklendi!');
+      }
+    } catch (err: any) {
+      Alert.alert('Hata', err.message || 'Bir sorun oluştu.');
+    }
+  };
+
+  const handleManualSync = async () => {
+    try {
+      await store.syncFromCloud();
+      await store.syncToCloud();
+      Alert.alert('Başarılı', 'Bulut yedeklemesi güncellendi. ✅');
+    } catch {
+      Alert.alert('Hata', 'Eşitleme sırasında bir hata oluştu.');
+    }
+  };
+
   // Saving settings
   const handleSaveProfile = () => {
     const parsedWater = parseInt(waterTarget, 10);
@@ -396,7 +439,140 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onNavigateToStats 
               <Button title="Bilgileri Kaydet" style={styles.actionBtn} onPress={handleSaveProfile} />
             </Card>
 
-            {/* 2. BİLDİRİMLER */}
+            {/* 2. BULUT YEDEKLEME */}
+            <SectionHeader title="Bulut Yedekleme & Eşitleme ☁️" />
+            <Card style={styles.card}>
+              {store.session ? (
+                /* LOGGED IN VIEW */
+                <View style={styles.cloudLoggedContainer}>
+                  <View style={[styles.cloudStatusBadge, { backgroundColor: colors.successLight, borderColor: colors.success }]}>
+                    <Text style={[styles.cloudStatusText, { color: colors.text }]}>
+                      ☁️ Buluta Bağlı: <Text style={{ fontWeight: 'bold' }}>{store.session.user.email}</Text>
+                    </Text>
+                  </View>
+                  
+                  {store.lastSyncedAt && (
+                    <Text style={[styles.cloudLastSync, { color: colors.textSecondary }]}>
+                      Son Eşitleme: {new Date(store.lastSyncedAt).toLocaleString('tr-TR')}
+                    </Text>
+                  )}
+
+                  <View style={styles.cloudActionsRow}>
+                    <Button
+                      title="Şimdi Eşitle 🔄"
+                      style={styles.flexBtn}
+                      onPress={handleManualSync}
+                    />
+                    <Button
+                      title="Çıkış Yap 🚪"
+                      variant="outline"
+                      style={styles.flexBtn}
+                      onPress={() => {
+                        Alert.alert('Çıkış Yap', 'Hesabınızdan çıkış yapmak istediğinize emin misiniz?', [
+                          { text: 'Vazgeç', style: 'cancel' },
+                          { text: 'Çıkış Yap', style: 'destructive', onPress: () => store.signOut() },
+                        ]);
+                      }}
+                    />
+                  </View>
+                </View>
+              ) : (
+                /* AUTH FORM VIEW */
+                <View style={styles.authContainer}>
+                  <Text style={[styles.authHelpText, { color: colors.textSecondary }]}>
+                    Tüm verilerinizi buluta yedekleyerek telefonunuzu değiştirseniz bile kaybolmamasını sağlayın.
+                  </Text>
+
+                  {/* Auth Tabs */}
+                  <View style={[styles.authTabsRow, { borderBottomColor: colors.border }]}>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      style={[
+                        styles.authTabBtn,
+                        authMode === 'login' && { borderBottomColor: colors.primary },
+                      ]}
+                      onPress={() => setAuthMode('login')}
+                    >
+                      <Text
+                        style={[
+                          styles.authTabText,
+                          {
+                            color: authMode === 'login' ? colors.primary : colors.textSecondary,
+                            fontWeight: authMode === 'login' ? 'bold' : '600',
+                          },
+                        ]}
+                      >
+                        Giriş Yap
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      style={[
+                        styles.authTabBtn,
+                        authMode === 'signup' && { borderBottomColor: colors.primary },
+                      ]}
+                      onPress={() => setAuthMode('signup')}
+                    >
+                      <Text
+                        style={[
+                          styles.authTabText,
+                          {
+                            color: authMode === 'signup' ? colors.primary : colors.textSecondary,
+                            fontWeight: authMode === 'signup' ? 'bold' : '600',
+                          },
+                        ]}
+                      >
+                        Hesap Oluştur
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Input Fields */}
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>E-posta</Text>
+                    <TextInput
+                      style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.background }]}
+                      value={authEmail}
+                      onChangeText={setAuthEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      placeholder="eposta@adresiniz.com"
+                      placeholderTextColor={colors.textSecondary}
+                      accessibilityLabel="Giriş e-posta adresi"
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={[styles.label, { color: colors.textSecondary }]}>Şifre</Text>
+                    <TextInput
+                      style={[styles.input, { borderColor: colors.border, color: colors.text, backgroundColor: colors.background }]}
+                      value={authPassword}
+                      onChangeText={setAuthPassword}
+                      secureTextEntry
+                      autoCapitalize="none"
+                      placeholder="••••••"
+                      placeholderTextColor={colors.textSecondary}
+                      accessibilityLabel="Giriş şifresi"
+                    />
+                  </View>
+
+                  {store.authError && (
+                    <Text style={[styles.authErrorText, { color: colors.danger }]}>
+                      ⚠️ {store.authError}
+                    </Text>
+                  )}
+
+                  <Button
+                    title={store.authLoading ? 'Lütfen bekleyin...' : authMode === 'login' ? 'Giriş Yap ve Eşitle' : 'Kayıt Ol ve Eşitle'}
+                    disabled={store.authLoading}
+                    style={styles.actionBtn}
+                    onPress={handleAuthSubmit}
+                  />
+                </View>
+              )}
+            </Card>
+
+            {/* 3. BİLDİRİMLER */}
             <SectionHeader title="Hatırlatıcı Bildirimler 🔔" />
             <Card style={styles.card}>
               <View style={styles.toggleRow}>
@@ -890,5 +1066,69 @@ const styles = StyleSheet.create({
   },
   settingsContainer: {
     gap: theme.spacing.md,
+  },
+  cloudLoggedContainer: {
+    gap: theme.spacing.md,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xs,
+  },
+  cloudStatusBadge: {
+    width: '100%',
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cloudStatusText: {
+    fontSize: theme.typography.sizes.bodySm,
+    fontFamily: theme.typography.fontFamily,
+  },
+  cloudLastSync: {
+    fontSize: 10,
+    fontFamily: theme.typography.fontFamily,
+    opacity: 0.8,
+  },
+  cloudActionsRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    width: '100%',
+    marginTop: theme.spacing.xs,
+  },
+  flexBtn: {
+    flex: 1,
+  },
+  authContainer: {
+    gap: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+  },
+  authHelpText: {
+    fontSize: theme.typography.sizes.bodySm,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  authTabsRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1.5,
+    marginBottom: theme.spacing.sm,
+  },
+  authTabBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 2.5,
+    borderColor: 'transparent',
+  },
+  authTabText: {
+    fontSize: theme.typography.sizes.bodySm,
+    fontFamily: theme.typography.fontFamilyHeadingBold,
+  },
+  authErrorText: {
+    fontSize: theme.typography.sizes.bodySm,
+    fontFamily: theme.typography.fontFamilyBold,
+    textAlign: 'center',
+    marginTop: -theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
   },
 });

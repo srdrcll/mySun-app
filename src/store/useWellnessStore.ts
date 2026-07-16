@@ -21,6 +21,102 @@ import {
   cancelAllAppNotifications,
 } from '../services/notifications/notificationService';
 import { playWaterSound, playDingSound } from '../services/sound/soundService';
+import { supabase } from '../services/supabase';
+
+const getSyncableState = (state: WellnessState) => {
+  return {
+    username: state.username,
+    waterTarget: state.waterTarget,
+    sleepTarget: state.sleepTarget,
+    habits: state.habits,
+    theme: state.theme,
+    notificationsEnabled: state.notificationsEnabled,
+    history: state.history,
+    isOnboarded: state.isOnboarded,
+    wakeUpTime: state.wakeUpTime,
+    sleepTime: state.sleepTime,
+    waterReminderSettings: state.waterReminderSettings,
+    habitCompletions: state.habitCompletions,
+    moodEntries: state.moodEntries,
+    sleepEntries: state.sleepEntries,
+    appUsageDays: state.appUsageDays,
+    readMessageIds: state.readMessageIds,
+    favoriteMessageIds: state.favoriteMessageIds,
+    easterEggUnlocked: state.easterEggUnlocked,
+    lastSyncedAt: state.lastSyncedAt,
+  };
+};
+
+const mergeArrays = <T extends { id?: string; createdAt?: string; completedAt?: string; timestamp?: string }>(
+  local: T[],
+  remote: T[],
+  key: keyof T = 'id'
+): T[] => {
+  const mergedMap = new Map<string, T>();
+  
+  // local values
+  local.forEach((item) => {
+    const idVal = String(item[key] || '');
+    if (idVal) mergedMap.set(idVal, item);
+  });
+  
+  // remote values (overwrite if newer timestamp)
+  remote.forEach((item) => {
+    const idVal = String(item[key] || '');
+    if (idVal) {
+      const existing = mergedMap.get(idVal);
+      if (existing) {
+        const localTime = new Date(existing.createdAt || existing.completedAt || existing.timestamp || 0).getTime();
+        const remoteTime = new Date(item.createdAt || item.completedAt || item.timestamp || 0).getTime();
+        if (remoteTime > localTime) {
+          mergedMap.set(idVal, item);
+        }
+      } else {
+        mergedMap.set(idVal, item);
+      }
+    }
+  });
+  
+  return Array.from(mergedMap.values());
+};
+
+const mergeHistory = (local: any = {}, remote: any = {}) => {
+  const merged = { ...local };
+  Object.keys(remote).forEach((key) => {
+    if (!local[key]) {
+      merged[key] = remote[key];
+    } else {
+      const locRec = local[key];
+      const remRec = remote[key];
+      
+      merged[key] = {
+        ...locRec,
+        water: Math.max(locRec.water || 0, remRec.water || 0),
+        sleep: Math.max(locRec.sleep || 0, remRec.sleep || 0),
+        mood: remRec.mood || locRec.mood || 0,
+        moodNote: remRec.moodNote || locRec.moodNote || '',
+        sleepQuality: remRec.sleepQuality || locRec.sleepQuality || 'neutral',
+        waterEntries: mergeArrays(locRec.waterEntries || [], remRec.waterEntries || [], 'id'),
+      };
+    }
+  });
+  return merged;
+};
+
+let syncTimeout: NodeJS.Timeout | null = null;
+const triggerAutoSync = () => {
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(async () => {
+    try {
+      const store = useWellnessStore.getState();
+      if (store.session) {
+        await store.syncToCloud();
+      }
+    } catch {
+      // safe fail silently in background sync
+    }
+  }, 5000);
+};
 
 const getLocalDateString = (date?: Date): string => {
   const d = date || new Date();
@@ -172,6 +268,10 @@ export const useWellnessStore = create<WellnessState>()(
 
       return {
         username: 'Kullanıcı',
+        session: null,
+        authLoading: false,
+        authError: null,
+        lastSyncedAt: null,
         waterTarget: 2000,
         sleepTarget: 8,
         habits: generateInitialHabits(),
@@ -206,15 +306,36 @@ export const useWellnessStore = create<WellnessState>()(
         habitReminderNotificationIds: {},
 
         // User Settings Actions
-        setUsername: (name) => set({ username: name }),
-        setWaterTarget: (target) => set({ waterTarget: target }),
-        setSleepTarget: (target) => set({ sleepTarget: target }),
-        setTheme: (theme) => set({ theme }),
-        setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
-        setWakeUpTime: (time) => set({ wakeUpTime: time }),
-        setSleepTime: (time) => set({ sleepTime: time }),
+        setUsername: (name) => {
+          set({ username: name });
+          triggerAutoSync();
+        },
+        setWaterTarget: (target) => {
+          set({ waterTarget: target });
+          triggerAutoSync();
+        },
+        setSleepTarget: (target) => {
+          set({ sleepTarget: target });
+          triggerAutoSync();
+        },
+        setTheme: (theme) => {
+          set({ theme });
+          triggerAutoSync();
+        },
+        setNotificationsEnabled: (enabled) => {
+          set({ notificationsEnabled: enabled });
+          triggerAutoSync();
+        },
+        setWakeUpTime: (time) => {
+          set({ wakeUpTime: time });
+          triggerAutoSync();
+        },
+        setSleepTime: (time) => {
+          set({ sleepTime: time });
+          triggerAutoSync();
+        },
 
-        completeOnboarding: (username, waterTarget, wakeUpTime, sleepTime, notificationsEnabled) =>
+        completeOnboarding: (username, waterTarget, wakeUpTime, sleepTime, notificationsEnabled) => {
           set({
             username,
             waterTarget,
@@ -222,7 +343,9 @@ export const useWellnessStore = create<WellnessState>()(
             sleepTime,
             notificationsEnabled,
             isOnboarded: true,
-          }),
+          });
+          triggerAutoSync();
+        },
 
         // Habit Customization Actions
         createHabit: async (habitData) => {
@@ -245,6 +368,7 @@ export const useWellnessStore = create<WellnessState>()(
               [newHabit.id]: newIds,
             },
           }));
+          triggerAutoSync();
         },
 
         updateHabit: async (id, updatedFields) => {
@@ -277,6 +401,7 @@ export const useWellnessStore = create<WellnessState>()(
             }
             return { habitReminderNotificationIds: currentIds };
           });
+          triggerAutoSync();
         },
 
         archiveHabit: async (id) => {
@@ -294,6 +419,7 @@ export const useWellnessStore = create<WellnessState>()(
               habitReminderNotificationIds: currentIds,
             };
           });
+          triggerAutoSync();
         },
 
         deleteHabit: async (id) => {
@@ -310,6 +436,7 @@ export const useWellnessStore = create<WellnessState>()(
               habitReminderNotificationIds: currentIds,
             };
           });
+          triggerAutoSync();
         },
 
         addHabit: (habitName) => {
@@ -388,6 +515,7 @@ export const useWellnessStore = create<WellnessState>()(
               lastInsertedWaterEntryId: isLastId ? null : state.lastInsertedWaterEntryId,
             };
           });
+          triggerAutoSync();
         },
 
         undoLastWaterEntry: (dateStr) => {
@@ -418,6 +546,7 @@ export const useWellnessStore = create<WellnessState>()(
             waterReminderSettings: merged,
             waterReminderNotificationIds: newIds,
           }));
+          triggerAutoSync();
         },
 
         // Sleep Tracking Actions
@@ -449,14 +578,13 @@ export const useWellnessStore = create<WellnessState>()(
             const updatedEntries = [...state.moodEntries, newEntry];
             const updatedState = { ...state, moodEntries: updatedEntries } as WellnessState;
             
-            // Sync with history
             const historyUpdate = syncDailyMoodFromEntries(updatedState, targetDate);
             return {
               moodEntries: updatedEntries,
               ...historyUpdate,
             };
           });
-
+          triggerAutoSync();
           return entryId;
         },
 
@@ -480,6 +608,7 @@ export const useWellnessStore = create<WellnessState>()(
               ...historyUpdate,
             };
           });
+          triggerAutoSync();
         },
 
         deleteMoodEntry: (id: string): void => {
@@ -500,6 +629,7 @@ export const useWellnessStore = create<WellnessState>()(
               ...historyUpdate,
             };
           });
+          triggerAutoSync();
         },
 
         setMood: (mood: Mood, note: string, dateStr?: string) => {
@@ -524,6 +654,7 @@ export const useWellnessStore = create<WellnessState>()(
                 moodEntries: filteredEntries,
               };
             });
+            triggerAutoSync();
           }
         },
 
@@ -565,7 +696,6 @@ export const useWellnessStore = create<WellnessState>()(
             const updatedEntries = [...state.sleepEntries, newEntry];
             const updatedState = { ...state, sleepEntries: updatedEntries } as WellnessState;
             
-            // Sync sleep values to history daily record
             const historyUpdate = syncDailySleepFromEntries(updatedState, dateKey);
 
             return {
@@ -573,7 +703,7 @@ export const useWellnessStore = create<WellnessState>()(
               ...historyUpdate,
             };
           });
-
+          triggerAutoSync();
           return entryId;
         },
 
@@ -605,11 +735,9 @@ export const useWellnessStore = create<WellnessState>()(
 
             let updatedState = { ...state, sleepEntries: updatedEntries } as WellnessState;
             
-            // Sync new date
             let historyUpdate = syncDailySleepFromEntries(updatedState, newDateKey);
             updatedState = { ...updatedState, ...historyUpdate };
 
-            // Sync old date if changed
             if (oldDateKey && oldDateKey !== newDateKey) {
               const oldHistoryUpdate = syncDailySleepFromEntries(updatedState, oldDateKey);
               updatedState = { ...updatedState, ...oldHistoryUpdate };
@@ -617,7 +745,7 @@ export const useWellnessStore = create<WellnessState>()(
 
             return updatedState;
           });
-
+          triggerAutoSync();
           return true;
         },
 
@@ -639,6 +767,7 @@ export const useWellnessStore = create<WellnessState>()(
               ...historyUpdate,
             };
           });
+          triggerAutoSync();
         },
 
         // Special Messages Actions
@@ -648,6 +777,7 @@ export const useWellnessStore = create<WellnessState>()(
             set((state) => ({
               appUsageDays: [...state.appUsageDays, targetKey],
             }));
+            triggerAutoSync();
           }
         },
 
@@ -656,6 +786,7 @@ export const useWellnessStore = create<WellnessState>()(
             set((state) => ({
               readMessageIds: [...state.readMessageIds, id],
             }));
+            triggerAutoSync();
           }
         },
 
@@ -667,11 +798,13 @@ export const useWellnessStore = create<WellnessState>()(
               : [...state.favoriteMessageIds, id];
             return { favoriteMessageIds: newList };
           });
+          triggerAutoSync();
         },
 
         unlockEasterEgg: (): void => {
           if (!get().easterEggUnlocked) {
             set({ easterEggUnlocked: true });
+            triggerAutoSync();
           }
         },
 
@@ -705,6 +838,156 @@ export const useWellnessStore = create<WellnessState>()(
 
           if (becameCompleted) {
             playDingSound();
+          }
+        },
+
+        // Supabase Auth and Sync Actions
+        initializeAuth: async () => {
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            set({ session });
+
+            if (session) {
+              get().syncFromCloud().catch(() => {});
+            }
+
+            supabase.auth.onAuthStateChange((_event, session) => {
+              set({ session });
+              if (session) {
+                get().syncFromCloud().catch(() => {});
+              }
+            });
+          } catch (err) {
+            if (__DEV__) console.warn('Supabase initializeAuth error:', err);
+          }
+        },
+
+        signUp: async (email, password) => {
+          set({ authLoading: true, authError: null });
+          try {
+            const { data, error } = await supabase.auth.signUp({ email, password });
+            if (error) {
+              set({ authError: error.message, authLoading: false });
+            } else {
+              set({ session: data.session, authLoading: false });
+              if (data.session) {
+                await get().syncToCloud();
+              }
+            }
+          } catch (err: any) {
+            set({ authError: err.message || 'Bir hata oluştu.', authLoading: false });
+          }
+        },
+
+        signIn: async (email, password) => {
+          set({ authLoading: true, authError: null });
+          try {
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+              set({ authError: error.message, authLoading: false });
+            } else {
+              set({ session: data.session, authLoading: false });
+              if (data.session) {
+                await get().syncFromCloud();
+              }
+            }
+          } catch (err: any) {
+            set({ authError: err.message || 'Bir hata oluştu.', authLoading: false });
+          }
+        },
+
+        signOut: async () => {
+          set({ authLoading: true, authError: null });
+          try {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+              set({ authError: error.message, authLoading: false });
+            } else {
+              set({
+                session: null,
+                authLoading: false,
+                authError: null,
+                lastSyncedAt: null,
+              });
+            }
+          } catch (err: any) {
+            set({ authError: err.message || 'Bir hata oluştu.', authLoading: false });
+          }
+        },
+
+        syncToCloud: async () => {
+          const session = get().session;
+          if (!session) return;
+          const userId = session.user.id;
+          const syncable = getSyncableState(get());
+
+          try {
+            const { error } = await supabase
+              .from('user_backups')
+              .upsert({
+                user_id: userId,
+                state_json: syncable,
+                updated_at: new Date().toISOString(),
+              });
+
+            if (!error) {
+              set({ lastSyncedAt: new Date().toISOString() });
+            } else {
+              if (__DEV__) console.warn('Supabase syncToCloud error:', error);
+            }
+          } catch (err) {
+            if (__DEV__) console.warn('Supabase syncToCloud exception:', err);
+          }
+        },
+
+        syncFromCloud: async () => {
+          const session = get().session;
+          if (!session) return;
+          const userId = session.user.id;
+
+          try {
+            const { data, error } = await supabase
+              .from('user_backups')
+              .select('state_json, updated_at')
+              .eq('user_id', userId)
+              .maybeSingle();
+
+            if (error) {
+              if (__DEV__) console.warn('Supabase syncFromCloud error:', error);
+              return;
+            }
+
+            if (data && data.state_json) {
+              const remote = data.state_json;
+              const local = get();
+
+              const merged = {
+                username: remote.username || local.username,
+                waterTarget: Math.max(local.waterTarget || 2000, remote.waterTarget || 2000),
+                sleepTarget: Math.max(local.sleepTarget || 8, remote.sleepTarget || 8),
+                theme: remote.theme || local.theme,
+                isOnboarded: local.isOnboarded || remote.isOnboarded || false,
+                wakeUpTime: remote.wakeUpTime || local.wakeUpTime,
+                sleepTime: remote.sleepTime || local.sleepTime,
+                
+                habits: mergeArrays(local.habits, remote.habits || [], 'id'),
+                habitCompletions: mergeArrays(local.habitCompletions, remote.habitCompletions || [], 'id'),
+                moodEntries: mergeArrays(local.moodEntries, remote.moodEntries || [], 'id'),
+                sleepEntries: mergeArrays(local.sleepEntries, remote.sleepEntries || [], 'id'),
+                
+                history: mergeHistory(local.history, remote.history || {}),
+                
+                appUsageDays: Array.from(new Set([...(local.appUsageDays || []), ...(remote.appUsageDays || [])])),
+                readMessageIds: Array.from(new Set([...(local.readMessageIds || []), ...(remote.readMessageIds || [])])),
+                favoriteMessageIds: Array.from(new Set([...(local.favoriteMessageIds || []), ...(remote.favoriteMessageIds || [])])),
+                easterEggUnlocked: local.easterEggUnlocked || remote.easterEggUnlocked || false,
+                lastSyncedAt: remote.lastSyncedAt || data.updated_at,
+              };
+
+              set(merged);
+            }
+          } catch (err) {
+            if (__DEV__) console.warn('Supabase syncFromCloud exception:', err);
           }
         },
 
@@ -742,7 +1025,6 @@ export const useWellnessStore = create<WellnessState>()(
       storage: createJSONStorage(() => AsyncStorage),
       version: 1,
       migrate: (persistedState: any, version: number) => {
-        // Migration: If storage contains legacy habits, convert
         if (
           persistedState &&
           Array.isArray(persistedState.habits) &&
@@ -755,6 +1037,15 @@ export const useWellnessStore = create<WellnessState>()(
           }
         }
         return persistedState;
+      },
+      partialize: (state) => {
+        const {
+          session,
+          authLoading,
+          authError,
+          ...rest
+        } = state;
+        return rest;
       },
     }
   )

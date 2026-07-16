@@ -36,6 +36,7 @@ import { BottomNavBar } from './src/components/BottomNavBar';
 function AppInner() {
   const isOnboarded = useWellnessStore((state) => state.isOnboarded);
   const trackAppOpen = useWellnessStore((state) => state.trackAppOpen);
+  const initializeAuth = useWellnessStore((state) => state.initializeAuth);
   const currentTheme = useWellnessStore((state) => state.theme);
 
   const [currentScreen, setCurrentScreen] = useState<
@@ -70,10 +71,13 @@ function AppInner() {
     return unsub;
   }, []);
 
-  // ── Track unique app-open days after hydration
+  // ── Track unique app-open days after hydration & initialize auth
   useEffect(() => {
-    if (hydrated && isOnboarded) {
-      trackAppOpen();
+    if (hydrated) {
+      initializeAuth();
+      if (isOnboarded) {
+        trackAppOpen();
+      }
     }
   }, [hydrated, isOnboarded]);
 

@@ -192,4 +192,17 @@ export interface WellnessState {
   
   // Reset Data
   resetAllData: () => void;
+
+  // Supabase Auth and Sync State
+  session: any | null;
+  authLoading: boolean;
+  authError: string | null;
+  lastSyncedAt: string | null;
+
+  signUp: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  initializeAuth: () => void;
+  syncToCloud: () => Promise<void>;
+  syncFromCloud: () => Promise<void>;
 }
