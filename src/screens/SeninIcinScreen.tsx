@@ -205,9 +205,9 @@ export const SeninIcinScreen: React.FC<SeninIcinScreenProps> = ({ onBack }) => {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
         {/* Bugünün Notu Card */}
-        <SectionHeader title="Bugünün Mektubu 💌" />
+        <SectionHeader title="Günün Tavsiye Mektubu 💌" />
         <Card style={styles.dailyCard} onPress={() => handleMessageTap(todayMessage)}>
-          <Text style={[styles.dailyLabel, { color: colors.primary }]}>BUGÜNÜN NOTU</Text>
+          <Text style={[styles.dailyLabel, { color: colors.primary }]}>GÜNÜN TAVSİYESİ</Text>
           <Text style={[styles.dailyText, { color: colors.text }]}>
             "{replacePlaceholders(todayMessage.content, username)}"
           </Text>
@@ -217,7 +217,7 @@ export const SeninIcinScreen: React.FC<SeninIcinScreenProps> = ({ onBack }) => {
         </Card>
 
         {/* Sürprizler & Başarılar (Surprises) */}
-        <SectionHeader title="Sürprizler & Mektuplar 🔒" />
+        <SectionHeader title="Kilitli Sürpriz Mektuplar 🔒" />
         <View style={styles.surprisesList}>
           {surpriseMessages.map((m) => {
             const unlocked = isMessageUnlocked(m, unlockData);
@@ -271,7 +271,7 @@ export const SeninIcinScreen: React.FC<SeninIcinScreenProps> = ({ onBack }) => {
         {/* Favoriler (Favorites) - Only display if at least one is present */}
         {favoriteMessages.length > 0 && (
           <>
-            <SectionHeader title="Favori Mektuplarım ♥︎" />
+            <SectionHeader title="Favori Tavsiye Mektuplarım ♥︎" />
             <View style={styles.favoritesList}>
               {favoriteMessages.map((m) => (
                 <TouchableOpacity
@@ -294,7 +294,7 @@ export const SeninIcinScreen: React.FC<SeninIcinScreenProps> = ({ onBack }) => {
         )}
 
         {/* Geçmiş Notlar (History of past 7 days) */}
-        <SectionHeader title="Geçmiş Mektuplar 🗓️" />
+        <SectionHeader title="Tavsiye Mektupları Arşivi 🗓️" />
         <Card style={styles.historyCard}>
           <View style={styles.historyList}>
             {historyMessages.map(({ dateKey, message }, index) => {
