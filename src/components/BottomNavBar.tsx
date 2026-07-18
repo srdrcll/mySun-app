@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import { useWellnessStore } from '../store/useWellnessStore';
 
@@ -19,19 +20,19 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
     {
       id: 'dashboard' as const,
       label: 'Ana Sayfa',
-      icon: '🏠',
+      iconName: 'home' as const,
       accessibilityLabel: 'Ana Sayfa sekmesi',
     },
     {
       id: 'calendar' as const,
       label: 'Takvim',
-      icon: '📅',
+      iconName: 'calendar' as const,
       accessibilityLabel: 'Takvim sekmesi',
     },
     {
       id: 'profile' as const,
       label: 'Profil',
-      icon: '👤',
+      iconName: 'user' as const,
       accessibilityLabel: 'Profil ve Ayarlar sekmesi',
     },
   ];
@@ -59,7 +60,12 @@ export const BottomNavBar: React.FC<BottomNavBarProps> = ({
             style={styles.tabBtn}
             onPress={() => onChangeScreen(t.id)}
           >
-            <Text style={[styles.icon, { opacity: isActive ? 1 : 0.5 }]}>{t.icon}</Text>
+            <Feather
+              name={t.iconName}
+              size={22}
+              color={isActive ? colors.primary : colors.textSecondary}
+              style={{ opacity: isActive ? 1 : 0.6, marginBottom: 2 }}
+            />
             <Text
               style={[
                 styles.label,
@@ -101,9 +107,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
-  },
-  icon: {
-    fontSize: 20,
   },
   label: {
     fontSize: 9,
