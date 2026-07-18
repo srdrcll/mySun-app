@@ -851,7 +851,7 @@ export const useWellnessStore = create<WellnessState>()(
               get().syncFromCloud().catch(() => {});
             }
 
-            supabase.auth.onAuthStateChange((_event, session) => {
+            supabase.auth.onAuthStateChange((_event: any, session: any) => {
               set({ session });
               if (session) {
                 get().syncFromCloud().catch(() => {});
