@@ -1,8 +1,77 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import { useWellnessStore } from '../store/useWellnessStore';
 import { SpinningSun } from './SpinningSun';
+
+// Micro-interaction animated icon for theme toggle button
+const AnimatedThemeIcon: React.FC<{ themeMode: 'light' | 'dark'; color: string }> = ({ themeMode, color }) => {
+  const animValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    animValue.setValue(0);
+    if (themeMode === 'dark') {
+      // Sun: Continuous rotation matching the logo sun
+      const spin = Animated.loop(
+        Animated.timing(animValue, {
+          toValue: 1,
+          duration: 8000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+      spin.start();
+      return () => spin.stop();
+    } else {
+      // Moon: Soft floating up-down and minor sway
+      const float = Animated.loop(
+        Animated.sequence([
+          Animated.timing(animValue, {
+            toValue: 1,
+            duration: 2500,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(animValue, {
+            toValue: 0,
+            duration: 2500,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      float.start();
+      return () => float.stop();
+    }
+  }, [themeMode, animValue]);
+
+  if (themeMode === 'dark') {
+    const spin = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0deg', '360deg'],
+    });
+    return (
+      <Animated.View style={{ transform: [{ rotate: spin }] }}>
+        <Feather name="sun" size={18} color={color} />
+      </Animated.View>
+    );
+  } else {
+    const translateY = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1.2, -1.2],
+    });
+    const rotate = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['-5deg', '8deg'],
+    });
+    return (
+      <Animated.View style={{ transform: [{ translateY }, { rotate }] }}>
+        <Feather name="moon" size={17} color={color} />
+      </Animated.View>
+    );
+  }
+};
 
 export const AppHeader: React.FC = () => {
   const currentTheme = useWellnessStore((state) => state.theme);
@@ -37,7 +106,7 @@ export const AppHeader: React.FC = () => {
         accessibilityRole="button"
         accessibilityLabel={currentTheme === 'dark' ? 'Açık temaya geç' : 'Koyu temaya geç'}
       >
-        <Text style={styles.themeBtnIcon}>{currentTheme === 'dark' ? '☀️' : '🌙'}</Text>
+        <AnimatedThemeIcon themeMode={currentTheme} color={colors.primary} />
       </TouchableOpacity>
     </View>
   );
