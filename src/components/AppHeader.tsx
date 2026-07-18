@@ -24,22 +24,14 @@ const AnimatedThemeIcon: React.FC<{ themeMode: 'light' | 'dark'; color: string }
       spin.start();
       return () => spin.stop();
     } else {
-      // Moon: Soft floating up-down and minor sway
+      // Moon: Continuous single loop for maximum web compatibility, sways and floats
       const float = Animated.loop(
-        Animated.sequence([
-          Animated.timing(animValue, {
-            toValue: 1,
-            duration: 2500,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(animValue, {
-            toValue: 0,
-            duration: 2500,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
+        Animated.timing(animValue, {
+          toValue: 1,
+          duration: 4000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
       );
       float.start();
       return () => float.stop();
@@ -57,13 +49,15 @@ const AnimatedThemeIcon: React.FC<{ themeMode: 'light' | 'dark'; color: string }
       </Animated.View>
     );
   } else {
+    // We map [0 -> 0.5 -> 1] to make the moon float up and return down smoothly
     const translateY = animValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [1.2, -1.2],
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, -3.5, 0],
     });
+    // We map [0 -> 0.25 -> 0.5 -> 0.75 -> 1] to make it sway left, return, sway right, return
     const rotate = animValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: ['-5deg', '8deg'],
+      inputRange: [0, 0.25, 0.5, 0.75, 1],
+      outputRange: ['0deg', '-8deg', '0deg', '8deg', '0deg'],
     });
     return (
       <Animated.View style={{ transform: [{ translateY }, { rotate }] }}>
